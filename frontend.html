@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Stripe Test Checkout</title>
+  <style>
+    body {
+      font-family: Arial;
+      padding: 40px;
+      background: #f8f9fa;
+    }
+    button {
+      padding: 14px 22px;
+      font-size: 18px;
+      cursor: pointer;
+      margin-right: 20px;
+      border-radius: 8px;
+      border: none;
+      background: #0b918a;
+      color: white;
+    }
+    button:hover {
+      background: #087a75;
+    }
+    #status {
+      margin-top: 30px;
+      font-size: 18px;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Stripe Checkout Test</h1>
+  <p>Select a product and proceed to test payment:</p>
+
+  <button onclick="pay('price_1STtgiPQIh9OIXi6LMHxIIIp')">
+    Buy 6-Month Bundle
+  </button>
+
+  <button onclick="pay('price_1STth3PQIh9OIXi6qIP4tSBn')">
+    Buy 1-Month Bundle
+  </button>
+
+  <div id="status"></div>
+
+  <script>
+    const backend = "https://stripetest-production-5339.up.railway.app";
+
+    async function pay(price_id) {
+      document.getElementById("status").innerText = "Creating checkout session...";
+
+      try {
+        const response = await fetch(`${backend}/create-checkout-session`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ price_id })
+        });
+
+        const data = await response.json();
+
+        if (data.url) {
+          document.getElementById("status").innerText = "Redirecting to Stripe Checkout...";
+          window.location.href = data.url;
+        } else {
+          document.getElementById("status").innerText = "Error: " + JSON.stringify(data);
+        }
+
+      } catch (err) {
+        document.getElementById("status").innerText = "Network error: " + err;
+      }
+    }
+  </script>
+
+</body>
+</html>

@@ -1,76 +1,94 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Stripe Test Checkout</title>
-  <style>
-    body {
-      font-family: Arial;
-      padding: 40px;
-      background: #f8f9fa;
-    }
-    button {
-      padding: 14px 22px;
-      font-size: 18px;
-      cursor: pointer;
-      margin-right: 20px;
-      border-radius: 8px;
-      border: none;
-      background: #0b918a;
-      color: white;
-    }
-    button:hover {
-      background: #087a75;
-    }
-    #status {
-      margin-top: 30px;
-      font-size: 18px;
-      color: #333;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stripe Checkout Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 40px;
+        }
+        h1 {
+            color: #222;
+        }
+        button {
+            padding: 12px 20px;
+            margin-right: 15px;
+            border: none;
+            border-radius: 6px;
+            background: #2d7a7a;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #215c5c;
+        }
+        #error {
+            margin-top: 25px;
+            color: red;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
 
-  <h1>Stripe Checkout Test</h1>
-  <p>Select a product and proceed to test payment:</p>
+    <h1>Stripe Checkout Test</h1>
+    <p>Select a product and proceed to test payment:</p>
 
-  <button onclick="pay('price_1STtgiPQIh9OIXi6LMHxIIIp')">
-    Buy 6-Month Bundle
-  </button>
+    <button onclick="checkout6()">Buy 6-Month Bundle</button>
+    <button onclick="checkout1()">Buy 1-Month Bundle</button>
 
-  <button onclick="pay('price_1STth3PQIh9OIXi6qIP4tSBn')">
-    Buy 1-Month Bundle
-  </button>
+    <div id="error"></div>
 
-  <div id="status"></div>
+    <script>
+        // ⛔ UPDATE THIS IF Railway URL CHANGES
+        const BACKEND_URL = "https://stripetest-production-5339.up.railway.app";
 
-  <script>
-    const backend = "https://stripetest-production-5339.up.railway.app";
+        const PRICE_6_MONTH = "price_1STtgiPQIh9OIXi6LMHxIIIp";  // replace if needed
+        const PRICE_1_MONTH = "price_1STth3PQIh9OIXi6qIP4tSBn"; // replace with actual price ID
 
-    async function pay(price_id) {
-      document.getElementById("status").innerText = "Creating checkout session...";
+        async function createCheckout(priceId) {
+            try {
+                const response = await fetch(`${BACKEND_URL}/create-checkout-session`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ price_id: priceId })
+                });
 
-      try {
-        const response = await fetch(`${backend}/create-checkout-session`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ price_id })
-        });
+                let data;
+                
+                // Try parsing JSON. If it fails, backend returned HTML (error page).
+                try {
+                    data = await response.json();
+                } catch (err) {
+                    document.getElementById("error").innerText =
+                        "Backend returned non-JSON response. Probably a 500 server error.";
+                    return;
+                }
 
-        const data = await response.json();
+                if (data.url) {
+                    window.location.href = data.url;
+                } else {
+                    document.getElementById("error").innerText =
+                        "Backend error: " + JSON.stringify(data, null, 2);
+                }
 
-        if (data.url) {
-          document.getElementById("status").innerText = "Redirecting to Stripe Checkout...";
-          window.location.href = data.url;
-        } else {
-          document.getElementById("status").innerText = "Error: " + JSON.stringify(data);
+            } catch (error) {
+                document.getElementById("error").innerText = 
+                    "Network error: " + error.message;
+            }
         }
 
-      } catch (err) {
-        document.getElementById("status").innerText = "Network error: " + err;
-      }
-    }
-  </script>
+        function checkout6() {
+            createCheckout(PRICE_6_MONTH);
+        }
+
+        function checkout1() {
+            createCheckout(PRICE_1_MONTH);
+        }
+    </script>
 
 </body>
 </html>

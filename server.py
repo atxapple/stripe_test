@@ -1,68 +1,61 @@
-import stripe
+import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+import stripe
 
 app = Flask(__name__)
 CORS(app)
 
-
-# ---------------------------------------
-# ROUTES
-# ---------------------------------------
+stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")  # MUST be set in Railway
 
 @app.route("/")
 def home():
-    return "Stripe Backend is running!"
+    return "Stripe backend is running."
 
 @app.route("/create-checkout-session", methods=["POST"])
 def create_checkout_session():
-    data = request.get_json()
-    price_id = data.get("price_id", PRICE_6_MONTH)
-
     try:
+        data = request.get_json()
+
+        if not data or "price_id" not in data:
+            return jsonify({"error": "Missing price_id"}), 400
+
+        price_id = data["price_id"]
+
         session = stripe.checkout.Session.create(
-            payment_method_types=["card"],
             mode="payment",
-            line_items=[
-                {"price": price_id, "quantity": 1}
-            ],
+            payment_method_types=["card"],
+            line_items=[{
+                "price": price_id,
+                "quantity": 1
+            }],
             success_url="https://google.com",
             cancel_url="https://google.com",
         )
-        return jsonify({"url": session.url})
-    except Exception as e:
-        return jsonify(error=str(e)), 400
 
-# ---------------------------------------
-# WEBHOOK HANDLER
-# ---------------------------------------
+        return jsonify({"url": session.url})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/webhook", methods=["POST"])
 def webhook():
     payload = request.data
     sig_header = request.headers.get("Stripe-Signature")
+    webhook_secret = os.environ.get("STRIPE_WEBHOOK_SECRET")
 
-    try:
-        event = stripe.Webhook.construct_event(
-            payload, sig_header, WEBHOOK_SECRET
-        )
-    except Exception as e:
-        print("❌ Webhook signature error:", e)
-        return "Bad signature", 400
+    if webhook_secret:
+        try:
+            event = stripe.Webhook.construct_event(
+                payload, sig_header, webhook_secret
+            )
+        except Exception as e:
+            return "Webhook signature failed", 400
+    else:
+        event = None
 
-    # Log event type
-    print(f"🔔 Received event: {event['type']}")
-
-    if event["type"] == "checkout.session.completed":
-        session = event["data"]["object"]
-        print("🎉 Payment succeeded!")
-        print("Customer:", session.get("customer_details"))
-        print("Amount:", session.get("amount_total"))
-
+    print("Webhook received:", event["type"] if event else "No event")
     return "OK", 200
 
-# ---------------------------------------
-# START SERVER (Railway compatible)
-# ---------------------------------------
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 4242))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))

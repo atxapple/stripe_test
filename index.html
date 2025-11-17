@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Stripe Test Checkout</title>
+</head>
+
+<body style="font-family: Arial; padding: 40px;">
+    <h2>Stripe Checkout Test</h2>
+
+    <button id="pay6" style="padding: 12px 20px; font-size: 16px;">
+        Buy 6-Month Camera Bundle
+    </button>
+
+    <br><br>
+
+    <button id="pay1" style="padding: 12px 20px; font-size: 16px;">
+        Buy 1-Month Camera Bundle
+    </button>
+
+    <script>
+        async function createCheckout(price_id) {
+            const res = await fetch("http://localhost:4242/create-checkout-session", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ price_id })
+            });
+
+            const data = await res.json();
+            window.location.href = data.url;
+        }
+
+        document.getElementById("pay6").onclick = () =>
+            createCheckout("price_1STtgiPQIh9OIXi6LMHxIIIp");
+
+        document.getElementById("pay1").onclick = () =>
+            createCheckout("price_1STth3PQIh9OIXi6qIP4tSBn");
+    </script>
+</body>
+</html>

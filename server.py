@@ -38,24 +38,38 @@ def create_checkout_session():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+import json
+
 @app.route("/webhook", methods=["POST"])
 def webhook():
     payload = request.data
     sig_header = request.headers.get("Stripe-Signature")
     webhook_secret = os.environ.get("STRIPE_WEBHOOK_SECRET")
 
-    if webhook_secret:
-        try:
-            event = stripe.Webhook.construct_event(
-                payload, sig_header, webhook_secret
-            )
-        except Exception as e:
-            return "Webhook signature failed", 400
-    else:
-        event = None
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, webhook_secret
+        )
+    except Exception as e:
+        print("❌ Webhook signature failed:", str(e))
+        return "Webhook signature failed", 400
 
-    print("Webhook received:", event["type"] if event else "No event")
+    print("\n🎉 Webhook received:", event["type"])
+    print("──────────────────────────────────────────────")
+    print(json.dumps(event, indent=4))
+    print("──────────────────────────────────────────────\n")
+
+    # Optional: handle specific events
+    if event["type"] == "checkout.session.completed":
+        session = event["data"]["object"]
+        print("Checkout Session ID:", session["id"])
+        print("Customer Email:", session.get("customer_details", {}).get("email"))
+        print("Payment Status:", session["payment_status"])
+        print("Amount Total:", session["amount_total"])
+        print("Currency:", session["currency"])
+
     return "OK", 200
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
